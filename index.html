@@ -91,7 +91,7 @@
                 const studentList = names.split('\n')
                     .map(name => name.trim())
                     .filter(name => name.length > 0)
-                    .map((name, index) => ({ id: Date.now() + index, name }));
+                    .map((name, index) => ({ id: Date.now() + index, name, warningLevel: 0 }));
 
                 if (studentList.length > 0) {
                     onStart(studentList);
@@ -120,7 +120,7 @@
             );
         };
 
-        const Layout = ({ children, students, activeStudentId, onSelectStudent, onReset, onOpenAbout }) => {
+        const Layout = ({ children, students, activeStudentId, onSelectStudent, onReset, onResetMeter, onOpenAbout }) => {
             return (
                 <div className="min-h-screen flex flex-col">
                     <header className="flex items-center justify-between border-b border-slate-200 bg-white px-10 py-4 z-10">
@@ -142,15 +142,38 @@
                     </header>
 
                     <div className="bg-white border-b border-slate-200 px-10">
-                        <div className="flex overflow-x-auto no-scrollbar gap-1">
+                        <div className="flex overflow-x-auto no-scrollbar gap-2">
                             {students.map(student => (
-                                <button
-                                    key={student.id}
-                                    onClick={() => onSelectStudent(student.id)}
-                                    className={`flex items-center justify-center border-b-[4px] px-8 pb-3 pt-4 whitespace-nowrap transition-all ${activeStudentId === student.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                                >
-                                    <p className="text-lg font-bold marker-font">{student.name}</p>
-                                </button>
+                                <div key={student.id} className="relative flex flex-col group min-w-[120px]">
+                                    <button
+                                        onClick={() => onSelectStudent(student.id)}
+                                        className={`flex flex-col items-center justify-center border-b-[4px] px-6 pb-2 pt-4 transition-all w-full ${activeStudentId === student.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        <p className="text-lg font-bold marker-font truncate max-w-[100px]">{student.name}</p>
+
+                                        <div className="flex flex-col items-center mt-2 gap-1">
+                                            <div className="flex gap-0.5">
+                                                {[1, 2, 3, 4, 5].map(step => (
+                                                    <div
+                                                        key={step}
+                                                        className={`h-1.5 w-3 rounded-full ${student.warningLevel >= step ? (student.warningLevel >= 4 ? 'bg-rose-500' : 'bg-amber-500') : 'bg-slate-200'}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            {activeStudentId === student.id && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onResetMeter(student.id);
+                                                    }}
+                                                    className="text-[10px] uppercase font-black tracking-tighter text-slate-400 hover:text-primary transition-colors"
+                                                >
+                                                    Reset
+                                                </button>
+                                            )}
+                                        </div>
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -192,9 +215,15 @@
 
         const StickyNote = ({ note, onDelete }) => {
             const colors = {
-                green: 'bg-emerald-100 border-emerald-500 text-emerald-900',
-                yellow: 'bg-amber-100 border-amber-500 text-amber-900',
-                red: 'bg-rose-100 border-rose-500 text-rose-900'
+                green: 'bg-emerald-100 border-emerald-500 text-emerald-950',
+                yellow: 'bg-amber-100 border-amber-500 text-amber-950',
+                red: 'bg-rose-100 border-rose-500 text-rose-950'
+            };
+
+            const iconColors = {
+                green: 'text-emerald-900',
+                yellow: 'text-amber-900',
+                red: 'text-rose-900'
             };
 
             return (
@@ -206,8 +235,10 @@
                         <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                     <div className="flex justify-between items-start">
-                        <span className="text-3xl">{note.emoji}</span>
-                        <p className="text-[10px] font-bold uppercase opacity-50">{note.timestamp}</p>
+                        <span className={`material-symbols-outlined text-4xl leading-none font-light ${iconColors[note.color]}`}>
+                            {note.icon}
+                        </span>
+                        <p className="text-[10px] font-bold uppercase opacity-40">{note.timestamp}</p>
                     </div>
                     <h3 className="marker-font text-2xl font-bold">{note.title}</h3>
                     <p className="font-medium leading-relaxed italic opacity-80">{note.description}</p>
@@ -216,8 +247,16 @@
         };
 
         const AddNoteModal = ({ isOpen, onClose, onAdd }) => {
+            const moodOptions = [
+                { icon: 'sentiment_very_satisfied', label: 'Good', value: 0 },
+                { icon: 'sentiment_neutral', label: 'Neutral', value: 1 },
+                { icon: 'sentiment_dissatisfied', label: 'Bad', value: 2 },
+                { icon: 'mood_bad', label: 'Really Bad', value: 3 }
+            ];
+
             const [formData, setFormData] = useState({
-                emoji: '✅',
+                icon: moodOptions[1].icon,
+                moodValue: moodOptions[1].value,
                 title: '',
                 description: '',
                 color: 'green'
@@ -235,7 +274,7 @@
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     rotation: ['-rotate-1', 'rotate-1', '-rotate-2', 'rotate-2', 'rotate-0'][Math.floor(Math.random() * 5)]
                 });
-                setFormData({ emoji: '✅', title: '', description: '', color: 'green' });
+                setFormData({ icon: moodOptions[1].icon, moodValue: moodOptions[1].value, title: '', description: '', color: 'green' });
             };
 
             return (
@@ -250,31 +289,32 @@
                             </div>
                             <form className="space-y-6" onSubmit={handleSubmit}>
                                 <div className="grid grid-cols-1 gap-6">
-                                    <div className="flex gap-6">
+                                    <div className="flex gap-2">
                                         <div className="flex-1">
-                                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Status Icon</label>
+                                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Behavior Mood</label>
                                             <div className="flex gap-2 h-[52px]">
-                                                {['✅', '💬', '⚠️', '🚨', '⛔'].map(icon => (
+                                                {moodOptions.map(mood => (
                                                     <button
-                                                        key={icon}
+                                                        key={mood.icon}
                                                         type="button"
-                                                        onClick={() => setFormData({ ...formData, emoji: icon })}
-                                                        className={`flex-1 rounded-xl border-2 transition-all text-xl flex items-center justify-center ${formData.emoji === icon ? 'border-primary bg-primary/5 scale-105' : 'border-slate-100 bg-slate-50 hover:border-slate-300'}`}
+                                                        onClick={() => setFormData({ ...formData, icon: mood.icon, moodValue: mood.value })}
+                                                        className={`flex-1 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${formData.icon === mood.icon ? 'border-primary bg-primary/5 scale-105' : 'border-slate-100 bg-slate-50 hover:border-slate-300'}`}
                                                     >
-                                                        {icon}
+                                                        <span className="material-symbols-outlined text-2xl">{mood.icon}</span>
+                                                        <span className="text-[8px] uppercase font-bold tracking-tighter">{mood.label}</span>
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="w-1/3">
+                                        <div className="w-1/4">
                                             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Color</label>
-                                            <div className="flex gap-4 h-[52px] items-center justify-between">
+                                            <div className="flex gap-3 h-[52px] items-center justify-between px-1">
                                                 {['green', 'yellow', 'red'].map(c => (
                                                     <button
                                                         key={c}
                                                         type="button"
                                                         onClick={() => setFormData({ ...formData, color: c })}
-                                                        className={`w-9 h-9 rounded-full border-4 transition-transform hover:scale-110 ${c === 'green' ? 'bg-emerald-200 border-emerald-500' : c === 'yellow' ? 'bg-amber-200 border-amber-500' : 'bg-rose-200 border-rose-500'} ${formData.color === c ? 'scale-110 shadow-lg' : 'opacity-40'}`}
+                                                        className={`w-8 h-8 rounded-full border-4 transition-transform hover:scale-110 ${c === 'green' ? 'bg-emerald-200 border-emerald-500' : c === 'yellow' ? 'bg-amber-200 border-amber-500' : 'bg-rose-200 border-rose-500'} ${formData.color === c ? 'scale-110 shadow-lg' : 'opacity-40'}`}
                                                     />
                                                 ))}
                                             </div>
@@ -355,11 +395,25 @@
 
             const handleAddNote = (newNote) => {
                 setNotes([...notes, { ...newNote, studentId: activeStudentId }]);
+
+                // Update warning level
+                setStudents(students.map(s => {
+                    if (s.id === activeStudentId) {
+                        const newLevel = Math.min(5, (s.warningLevel || 0) + newNote.moodValue);
+                        return { ...s, warningLevel: newLevel };
+                    }
+                    return s;
+                }));
+
                 setIsModalOpen(false);
             };
 
             const handleDeleteNote = (noteId) => {
                 setNotes(notes.filter(n => n.id !== noteId));
+            };
+
+            const handleResetMeter = (studentId) => {
+                setStudents(students.map(s => s.id === studentId ? { ...s, warningLevel: 0 } : s));
             };
 
             const handleReset = () => {
@@ -387,6 +441,7 @@
                     activeStudentId={activeStudentId}
                     onSelectStudent={setActiveStudentId}
                     onReset={handleReset}
+                    onResetMeter={handleResetMeter}
                     onOpenAbout={() => setIsAboutOpen(true)}
                 >
                     <main className="flex-1 p-10 whiteboard-grid overflow-y-auto">
