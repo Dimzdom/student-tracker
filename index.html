@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Student Warning Tracker - Whiteboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+
+        .marker-font {
+            font-family: 'Gochi Hand', cursive;
+        }
+
+        .sticky-note {
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .sticky-note:hover {
+            transform: scale(1.02) rotate(1deg);
+        }
+
+        .whiteboard-grid {
+            background-color: #fcfcfc;
+            background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        :root {
+            --primary: #137fec;
+        }
+    </style>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"],
+                        "hand": ["Gochi Hand", "cursive"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+    <div id="root"></div>
+
+    <!-- React and related libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+
+        // --- Components ---
+
+        const SetupView = ({ onStart }) => {
+            const [names, setNames] = useState('');
+
+            const handleStart = () => {
+                const studentList = names.split('\n')
+                    .map(name => name.trim())
+                    .filter(name => name.length > 0)
+                    .map((name, index) => ({ id: Date.now() + index, name }));
+
+                if (studentList.length > 0) {
+                    onStart(studentList);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+                    <div className="max-w-xl w-full bg-white p-10 rounded-3xl shadow-2xl border-2 border-slate-200">
+                        <h1 className="text-4xl marker-font text-center mb-6 text-slate-800">Welcome, Teacher!</h1>
+                        <p className="text-slate-500 text-center mb-8">Enter student first names (one per line) to set up your tracker.</p>
+                        <textarea
+                            className="w-full h-64 p-4 border-2 border-slate-200 rounded-2xl focus:border-primary focus:ring-0 text-lg font-medium"
+                            placeholder="Alex&#10;Sarah&#10;Leo..."
+                            value={names}
+                            onChange={(e) => setNames(e.target.value)}
+                        />
+                        <button
+                            onClick={handleStart}
+                            className="w-full mt-8 py-4 bg-primary text-white rounded-2xl text-xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-primary/30"
+                        >
+                            Start Class
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Layout = ({ children, students, activeStudentId, onSelectStudent, onReset, onOpenAbout }) => {
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <header className="flex items-center justify-between border-b border-slate-200 bg-white px-10 py-4 z-10">
+                        <div className="flex items-center gap-3 text-primary">
+                            <div className="size-8 bg-primary text-white rounded-lg flex items-center justify-center">
+                                <span className="material-symbols-outlined">edit_square</span>
+                            </div>
+                            <h2 className="text-slate-900 text-xl font-bold leading-tight tracking-tight marker-font">StudentTracker</h2>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={onReset}
+                                className="text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-widest"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">restart_alt</span>
+                                Reset All
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="bg-white border-b border-slate-200 px-10">
+                        <div className="flex overflow-x-auto no-scrollbar gap-1">
+                            {students.map(student => (
+                                <button
+                                    key={student.id}
+                                    onClick={() => onSelectStudent(student.id)}
+                                    className={`flex items-center justify-center border-b-[4px] px-8 pb-3 pt-4 whitespace-nowrap transition-all ${activeStudentId === student.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    <p className="text-lg font-bold marker-font">{student.name}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {children}
+
+                    <footer className="bg-white border-t border-slate-200 px-10 py-4 flex justify-between items-center text-slate-400">
+                        <p className="text-xs font-bold uppercase tracking-widest">Persistence: LocalStorage Active</p>
+                        <div className="flex items-center gap-6">
+                            <button
+                                onClick={onOpenAbout}
+                                className="text-xs font-bold uppercase tracking-widest hover:text-primary transition-colors underline decoration-dotted"
+                            >
+                                Why I made this
+                            </button>
+                            <p className="text-xs font-bold uppercase tracking-widest">made by ismail.</p>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const AboutModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 relative animate-in fade-in zoom-in duration-200">
+                        <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors">
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+                        <h2 className="text-3xl marker-font text-slate-900 mb-4">About this project</h2>
+                        <p className="text-slate-600 leading-relaxed font-medium">
+                            I made this as a project to see how i could run a nice and functional app all in one single html file, I also made this to help my teachers.
+                        </p>
+                    </div>
+                </div>
+            );
+        };
+
+        const StickyNote = ({ note, onDelete }) => {
+            const colors = {
+                green: 'bg-emerald-100 border-emerald-500 text-emerald-900',
+                yellow: 'bg-amber-100 border-amber-500 text-amber-900',
+                red: 'bg-rose-100 border-rose-500 text-rose-900'
+            };
+
+            return (
+                <div className={`sticky-note ${colors[note.color]} p-6 rounded-sm shadow-xl border-t-8 ${note.rotation} flex flex-col gap-4 min-h-[220px] relative group`}>
+                    <button
+                        onClick={() => onDelete(note.id)}
+                        className="absolute -top-2 -right-2 bg-white text-slate-400 p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:text-rose-500"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                    <div className="flex justify-between items-start">
+                        <span className="text-3xl">{note.emoji}</span>
+                        <p className="text-[10px] font-bold uppercase opacity-50">{note.timestamp}</p>
+                    </div>
+                    <h3 className="marker-font text-2xl font-bold">{note.title}</h3>
+                    <p className="font-medium leading-relaxed italic opacity-80">{note.description}</p>
+                </div>
+            );
+        };
+
+        const AddNoteModal = ({ isOpen, onClose, onAdd }) => {
+            const [formData, setFormData] = useState({
+                emoji: '📝',
+                title: '',
+                description: '',
+                color: 'green'
+            });
+
+            if (!isOpen) return null;
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!formData.title) return;
+
+                onAdd({
+                    ...formData,
+                    id: Date.now(),
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    rotation: ['-rotate-1', 'rotate-1', '-rotate-2', 'rotate-2', 'rotate-0'][Math.floor(Math.random() * 5)]
+                });
+                setFormData({ emoji: '📝', title: '', description: '', color: 'green' });
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-200">
+                        <div className="p-8">
+                            <div className="flex items-center justify-between mb-8">
+                                <h2 className="text-3xl marker-font text-slate-900">Add New Note</h2>
+                                <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                            <form className="space-y-6" onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Icon / Emoji</label>
+                                        <input
+                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-2xl focus:border-primary focus:ring-0 text-center"
+                                            value={formData.emoji}
+                                            onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                                            maxLength="2"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Color</label>
+                                        <div className="flex gap-4 h-[52px] items-center">
+                                            {['green', 'yellow', 'red'].map(c => (
+                                                <button
+                                                    key={c}
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, color: c })}
+                                                    className={`w-10 h-10 rounded-full border-4 transition-transform hover:scale-110 ${c === 'green' ? 'bg-emerald-200 border-emerald-500' : c === 'yellow' ? 'bg-amber-200 border-amber-500' : 'bg-rose-200 border-rose-500'} ${formData.color === c ? 'scale-110 shadow-lg' : 'opacity-40'}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Title</label>
+                                    <input
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-xl marker-font focus:border-primary focus:ring-0"
+                                        placeholder="e.g., Participation"
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Description</label>
+                                    <textarea
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-base focus:border-primary focus:ring-0"
+                                        placeholder="Add details..."
+                                        rows="3"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-end gap-3 pt-4">
+                                    <button onClick={onClose} className="px-6 py-3 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider" type="button">
+                                        Cancel
+                                    </button>
+                                    <button className="px-10 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-all shadow-lg shadow-primary/20 uppercase tracking-wider" type="submit">
+                                        Save Note
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Dashboard = () => {
+            const [students, setStudents] = useState([]);
+            const [notes, setNotes] = useState([]);
+            const [activeStudentId, setActiveStudentId] = useState(null);
+            const [isInitialLoad, setIsInitialLoad] = useState(true);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [isAboutOpen, setIsAboutOpen] = useState(false);
+
+            // Load from LocalStorage
+            useEffect(() => {
+                const savedStudents = localStorage.getItem('tracker_students');
+                const savedNotes = localStorage.getItem('tracker_notes');
+
+                if (savedStudents) {
+                    const parsed = JSON.parse(savedStudents);
+                    setStudents(parsed);
+                    if (parsed.length > 0) setActiveStudentId(parsed[0].id);
+                }
+                if (savedNotes) {
+                    setNotes(JSON.parse(savedNotes));
+                }
+                setIsInitialLoad(false);
+            }, []);
+
+            // Save to LocalStorage
+            useEffect(() => {
+                if (!isInitialLoad) {
+                    localStorage.setItem('tracker_students', JSON.stringify(students));
+                    localStorage.setItem('tracker_notes', JSON.stringify(notes));
+                }
+            }, [students, notes, isInitialLoad]);
+
+            const handleStartClass = (studentList) => {
+                setStudents(studentList);
+                setActiveStudentId(studentList[0].id);
+            };
+
+            const handleAddNote = (newNote) => {
+                setNotes([...notes, { ...newNote, studentId: activeStudentId }]);
+                setIsModalOpen(false);
+            };
+
+            const handleDeleteNote = (noteId) => {
+                setNotes(notes.filter(n => n.id !== noteId));
+            };
+
+            const handleReset = () => {
+                if (confirm('Are you sure you want to reset everything? This will delete all students and notes.')) {
+                    setStudents([]);
+                    setNotes([]);
+                    setActiveStudentId(null);
+                    localStorage.removeItem('tracker_students');
+                    localStorage.removeItem('tracker_notes');
+                }
+            };
+
+            if (isInitialLoad) return <div className="min-h-screen bg-slate-50"></div>;
+
+            if (students.length === 0) {
+                return <SetupView onStart={handleStartClass} />;
+            }
+
+            const currentStudentNotes = notes.filter(n => n.studentId === activeStudentId);
+            const activeStudent = students.find(s => s.id === activeStudentId);
+
+            return (
+                <Layout
+                    students={students}
+                    activeStudentId={activeStudentId}
+                    onSelectStudent={setActiveStudentId}
+                    onReset={handleReset}
+                    onOpenAbout={() => setIsAboutOpen(true)}
+                >
+                    <main className="flex-1 p-10 whiteboard-grid overflow-y-auto">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex justify-between items-center mb-10">
+                                <div>
+                                    <h1 className="text-6xl marker-font text-slate-900 mb-2">{activeStudent?.name}'s Board</h1>
+                                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Classroom Tracking Dashboard</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="flex items-center gap-3 bg-white text-slate-800 border-2 border-slate-200 px-8 py-4 rounded-2xl font-bold hover:border-primary hover:text-primary transition-all shadow-sm marker-font text-2xl"
+                                >
+                                    <span className="material-symbols-outlined font-black">add</span>
+                                    Add Note
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {currentStudentNotes.map(note => (
+                                    <StickyNote key={note.id} note={note} onDelete={handleDeleteNote} />
+                                ))}
+
+                                {currentStudentNotes.length === 0 && (
+                                    <div className="col-span-full py-20 text-center">
+                                        <div className="bg-slate-100 size-20 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                                            <span className="material-symbols-outlined text-4xl">note_stack</span>
+                                        </div>
+                                        <p className="marker-font text-3xl text-slate-300">No notes yet for {activeStudent?.name}</p>
+                                        <p className="text-slate-400 mt-2">Click "Add Note" to start tracking.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+
+                    <AddNoteModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        onAdd={handleAddNote}
+                    />
+
+                    <AboutModal
+                        isOpen={isAboutOpen}
+                        onClose={() => setIsAboutOpen(false)}
+                    />
+                </Layout>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<Dashboard />);
+    </script>
+</body>
+
+</html>
